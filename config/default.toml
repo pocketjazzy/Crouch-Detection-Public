@@ -1,0 +1,80 @@
+# Crouch-Detection default configuration.
+# M0 placeholder — consumed from M2 onward. Copy to config/local.toml
+# (git-ignored) for machine-specific overrides.
+
+[camera]
+# Cameras enumerate in OS order; virtual cams (e.g. EOS Webcam Utility)
+# occupy indices too. Cycle live in the settings menu (M), or:
+# Find yours with: python -m crouch_detection.smoke_test --scan
+index = 1
+width = 640
+height = 480
+fps = 30
+# Auto exposure adapts to the room but stretches the shutter in dim light,
+# which halves the frame rate (~16 fps measured on the iC800 lights-off vs
+# 30 lit; A/B-verified 2026-07-18). Toggle live in the settings menu (M).
+auto_exposure = true
+# Shutter used when auto_exposure = false, log2 seconds: -5 = 1/32 s
+# (holds 30 fps, probe-verified), -6 = 1/64 s (darker, more margin).
+# Find your value with: python -m crouch_detection.fps_probe
+exposure = -5
+
+[ui]
+# Mirror the preview so it behaves like a mirror (does not affect detection).
+mirror = true
+# false = wireframe on black (default); true = draw over the camera feed.
+# Toggle live with the c key.
+show_camera = false
+
+[detection]
+# Joint driving the crouch decision:
+#   "shoulders" - always in frame, even close to the camera (default)
+#   "hips"      - classic signal, but needs ~4-5 ft of camera distance
+#   "auto"      - hips when visible, shoulders otherwise
+trigger_joint = "shoulders"
+# Consecutive frames past a threshold before the state actually flips
+# (~66 ms at 30 fps). Raise to 3 if you ever see key flapping; drop to 1
+# for the fastest possible commit (small flap risk on tracking glitches).
+debounce_frames = 2
+# Predictive lookahead: judge thresholds on where the signal will be this
+# many ms ahead (position + velocity beyond a sway deadband), firing
+# transitions early during fast moves. 0 disables. Simulation: 100 saves
+# two frames (~66 ms) with no flapping; fake-outs start at ~150.
+lookahead_ms = 100
+# After this long without a detected person, apply the fail-safe.
+lost_tracking_ms = 500
+# "release" = let go of the key when tracking is lost (Time Crisis: safe
+# behind cover). "hold" = keep the last state.
+fail_safe = "release"
+
+[detection.filter]
+# One-Euro smoothing: raise min_cutoff for less lag when still, raise beta
+# for snappier response to fast moves. Tuned hot for a time-sensitive game;
+# lower (1.5 / 0.3) if the signal line looks jittery.
+min_cutoff = 2.0
+beta = 0.6
+
+# Per-joint thresholds, normalized y (0.0 = top of frame, 1.0 = bottom).
+# Hysteresis pair: the joint must SINK below crouch_below (y rises past it)
+# to count as CROUCHED, then RISE above stand_above to count as STANDING.
+[detection.shoulders]
+# Fallback before first calibration (from the 2026-07-16 measured setup:
+# standing ~0.40, crouched ~0.69, band at 45%/55% of the gap). Press n in
+# the viewer to calibrate per player - that overrides these via local.toml.
+crouch_below = 0.56
+stand_above = 0.53
+
+[detection.hips]
+# PLACEHOLDER - not yet measured (hips need ~4-5 ft of camera distance).
+crouch_below = 0.80
+stand_above = 0.72
+
+[output]
+# What gets held down (injection lands in M3). Change in the settings
+# menu (M): Left_Alt, Left_Ctrl, Left_Shift, Space, Z, X, Mouse_Left,
+# Mouse_Right, Mouse_Middle.
+key = "Left_Alt"
+# "standing" = key held while you stand (Time Crisis pedal inversion).
+# "crouched" = key held while you crouch (normal games).
+press_when = "standing"
+arm_hotkey = "f8"

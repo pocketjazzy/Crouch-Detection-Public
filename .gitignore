@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+
+# Local config overrides (config/default.toml IS tracked)
+config/local*.toml
+
+# MediaPipe model files (downloaded at first run, not vendored)
+models/*.task
+
+# OS noise
+Thumbs.db
+.DS_Store
