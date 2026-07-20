@@ -1,100 +1,83 @@
 # Crouch-Detection
 
-Turn a webcam into a crouch pedal. The app tracks your body with a webcam,
-detects when you physically crouch, and holds/releases a keyboard key
-accordingly — so light-gun games like **Time Crisis** (via MAME) can be played
-standing up, ducking behind real furniture to take cover.
+Play Time Crisis by actually crouching.
 
-## Why the logic is inverted
+The app watches you through a webcam. While you are standing, it holds a
+key down (Left Alt by default). When you crouch, it lets go of the key.
+In Time Crisis, Left Alt is the pedal — so standing up in real life makes
+your character stand up and shoot, and ducking behind your real furniture
+makes your character duck behind cover.
 
-In Time Crisis the character is **crouched behind cover by default** and the
-pedal (mapped to **Left Alt** in MAME) makes them stand up to shoot. Humans are
-standing by default, so this app reverses the mapping:
+You see yourself as a green stick figure on a black screen, with a big
+STANDING or CROUCHED label so you always know what the app thinks you're
+doing.
 
-| You (physical)              | App output          | Game character |
-|-----------------------------|---------------------|----------------|
-| Standing                    | **holds Left Alt**  | stands, shoots |
-| Crouched (below threshold)  | **releases Alt**    | ducks to cover |
+## Setting it up
 
-Key and polarity are configurable, so other games work too.
+**Easiest way (no install):** download the zip from the Releases page,
+unzip it anywhere, and run `CrouchDetection.exe`.
 
-## How it works
-
-```
-webcam ──> OpenCV capture ──> MediaPipe Pose (33 landmarks)
-              │                     │
-              │                     v
-              │        trigger joint (hips / shoulders / head)
-              │                     │
-              │            One-Euro smoothing
-              │                     │
-              │      hysteresis + debounce state machine
-              │            STANDING <──> CROUCHED
-              │                     │
-              v                     v
-      preview window        key injection
-   (skeleton + threshold   (SendInput scan codes on Windows,
-    line + state readout)      uinput on Linux)
-```
-
-Safety/comfort details:
-
-- **Hysteresis** — separate crouch-below / stand-above thresholds so hovering
-  at the line never machine-guns the key.
-- **Fail-safe** — if tracking is lost, the key is released (in Time Crisis,
-  crouched = safe behind cover).
-- **Arm/disarm hotkey** — configure and test without keystrokes firing into
-  whatever window has focus.
-
-## Status
-
-Detection, per-player calibration (`n`), settings menu (`M`), and key
-injection (`F8` to arm) are implemented; MAME validation is the current
-step. See [ROADMAP.md](ROADMAP.md).
-
-## Quick start (Windows)
-
-Requires Python 3.9–3.12 (MediaPipe does not yet ship 3.13 wheels).
+**From source** (needs Python 3.9–3.12):
 
 ```powershell
 cd Crouch-Detection
-py -3.11 -m venv .venv          # or: python -m venv .venv
+python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e .
-
-# M0 smoke test: shows the live camera feed with an FPS counter
-python -m crouch_detection.smoke_test        # optional arg: camera index
+python -m crouch_detection.viewer
 ```
 
-Press `ESC` or `q` to quit the preview window.
+## First time you use it
 
-## Portable exe (no Python needed)
+1. Place the webcam where it can see your upper body in your play spot.
+2. Press `n` and follow the countdowns: stand still, then crouch and
+   hold. Takes about 13 seconds, and teaches the app YOUR standing and
+   crouching heights. Each player should do this once.
+3. If the picture gets choppy in a dark room, press `M` and turn
+   **Auto exposure** off.
+4. Start your game. For MAME, add this to how you launch it (without it,
+   MAME ignores the app's key presses):
 
-From the repo root, in the Python environment that runs the viewer:
+   ```
+   -keyboardprovider dinput -lowlatency
+   ```
 
-```powershell
-.\build_exe.ps1
-```
+5. Press `F8` to switch the key output on. Play!
 
-Output is `dist\CrouchDetection\` — a self-contained folder with
-`CrouchDetection.exe`; zip it and run it on any Windows machine, no Python
-required. `config\default.toml` and the pose model sit next to the exe
-(editable / downloaded once); calibration (`n`) writes `config\local.toml`
-there too, so each machine keeps its own thresholds.
+## Keys
 
-## Hardware
+| Key | What it does |
+|---|---|
+| `F8` | Turns the key output on/off. Works even while the game has focus. |
+| `n` | Calibrate a new player (stand + crouch countdowns). |
+| `M` | Opens the settings menu. |
+| `c` | Shows/hides the real camera picture behind the stick figure. |
+| `ESC` / `q` | Close the menu / cancel calibration / quit. |
 
-Developed against an **Inland iC800 HD** webcam, but any UVC webcam works.
-Target capture mode is 640×480 @ 30fps MJPG (low latency beats resolution for
-pose tracking).
+## The settings menu (press M)
 
-## MAME integration notes
+Arrow keys pick a row; Left/Right or Enter changes it. Everything saves
+automatically.
 
-- **Launch MAME with `-keyboardprovider dinput`.** Validated 2026-07-19 on
-  MAME 0.287 / Time Crisis 2: the default `rawinput` provider drops
-  injected input (no source device), and `win32` also failed on this
-  setup; `dinput` accepts it.
-- For less input lag, add `-lowlatency` too (MAME draws the frame after
-  polling input instead of before).
-- Injection uses **scan codes** (`KEYEVENTF_SCANCODE`), which is what
-  DirectInput-era apps actually read. Left Alt = scan code `0x38`.
+- **Camera** — have more than one camera? Cycle until you see the right
+  one.
+- **Auto exposure** — ON adapts to the room but can get choppy in the
+  dark. OFF keeps the picture smooth in dim light.
+- **Hold key/button** — which key (or mouse button) gets held. Left_Alt
+  is for Time Crisis.
+- **Hold while** — STANDING is for Time Crisis (its pedal works
+  backwards). Pick CROUCHED for normal games where a key makes you
+  crouch.
+- **Trigger joint** — which part of your body makes the call. Shoulders
+  (default) works even when you're close to the camera.
+- **Mirror preview** — flips the picture so it behaves like a mirror.
+- **Show camera feed** — same as pressing `c`.
+
+## Good to know
+
+- If the app loses sight of you, it releases the key. In Time Crisis
+  that means your character ducks to safety.
+- Any ordinary USB webcam works. Plug it into the computer directly,
+  not into a hub, if you can.
+- To build the exe yourself: `.\build_exe.ps1` — the finished app lands
+  in `dist\CrouchDetection\`.
