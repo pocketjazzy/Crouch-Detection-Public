@@ -31,8 +31,9 @@ python -m crouch_detection.viewer
 2. Press `n` and follow the countdowns: stand still, then crouch and
    hold. Takes about 13 seconds, and teaches the app YOUR standing and
    crouching heights. Each player should do this once.
-3. If the picture gets choppy in a dark room, press `M` and turn
-   **Auto exposure** off.
+3. If the picture is choppy in a dark room (~15 fps), try turning off
+   **Auto exposure** in the settings menu (`M`). The app should run
+   at/near the speed of your webcam's capture rate.
 4. Start your game. **For MAME, add this to how you launch it (without it,
    MAME ignores the app's key presses):**
 
