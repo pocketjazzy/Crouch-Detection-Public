@@ -1,16 +1,14 @@
 # Crouch-Detection
 
-Play Time Crisis by actually crouching.
+Play Time Crisis 2 (or any other game) by physically crouching.
 
-The app watches you through a webcam. While you are standing, it holds a
-key down (Left Alt by default). When you crouch, it lets go of the key.
-In Time Crisis, Left Alt is the pedal — so standing up in real life makes
-your character stand up and shoot, and ducking behind your real furniture
-makes your character duck behind cover.
+The app uses any generic usb webcam to perform body tracking. While you are standing, it holds a
+key down (Left Alt by default). When you crouch, it lets go of the key. This behvior can be reversed so that it holds on crouch instead, if desired.
 
-You see yourself as a green stick figure on a black screen, with a big
-STANDING or CROUCHED label so you always know what the app thinks you're
-doing.
+In Time Crisis 2 MAME, Left Alt is the default key for pressing the foot pedal — so standing up in real life makes
+your character stand up, and crouching makes your character duck behind cover.
+
+The app opens a viewer window where you will see yourself depicted as a green stick figure. Text will indicate if it's detecting you as STANDING or CROUCHED. This state is determined by the threshold set by your calibration. You should calibrate using "N" on first launch to get your personal height. By default the app utilizes your shoulder height as the reference point. Calibration will set the standing/crouching threshold lines. The app also uses some rate of movement predictions to try and lower latency between physical movement, app processing, and key press.
 
 ## Setting it up
 
@@ -35,8 +33,8 @@ python -m crouch_detection.viewer
    crouching heights. Each player should do this once.
 3. If the picture gets choppy in a dark room, press `M` and turn
    **Auto exposure** off.
-4. Start your game. For MAME, add this to how you launch it (without it,
-   MAME ignores the app's key presses):
+4. Start your game. **For MAME, add this to how you launch it (without it,
+   MAME ignores the app's key presses):**
 
    ```
    -keyboardprovider dinput -lowlatency
