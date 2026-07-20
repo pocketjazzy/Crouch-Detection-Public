@@ -195,7 +195,11 @@ def build_menu(cfg: dict, state: SimpleNamespace) -> menu.SettingsMenu:
 
     def auto_exposure_change(_direction) -> None:
         cam_cfg["auto_exposure"] = not cam_cfg.get("auto_exposure", True)
-        apply_exposure(state.cap, cam_cfg)
+        # Reopen the stream instead of poking the live one: several UVC
+        # drivers keep the previously negotiated (slow) frame interval
+        # until the stream restarts, leaving fps stuck after a toggle.
+        state.cap.release()
+        state.cap = open_camera(cam_cfg, state.cam_index)
         persist("camera", "auto_exposure", cam_cfg["auto_exposure"])
 
     def camera_value() -> str:
