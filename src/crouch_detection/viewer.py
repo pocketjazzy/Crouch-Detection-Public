@@ -46,6 +46,16 @@ LEGACY_KEY_NAMES = {
 TRIGGER_CHOICES = ["shoulders", "hips", "auto"]
 
 
+def set_opencv_log_level(name: str) -> None:
+    """Tame OpenCV's console chatter (very loud on Linux/V4L2); no-op if
+    the logging module isn't available."""
+    try:
+        from cv2.utils import logging as cvlog
+        cvlog.setLogLevel(getattr(cvlog, name))
+    except Exception:
+        pass
+
+
 def apply_exposure(cap, cam_cfg: dict) -> None:
     if cam_cfg.get("auto_exposure", True):
         cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
@@ -190,17 +200,21 @@ def build_menu(cfg: dict, state: SimpleNamespace) -> menu.SettingsMenu:
         the live preview shows which device it is."""
         old = state.cam_index
         state.cap.release()
-        for step in range(1, MAX_CAMERA_SCAN):
-            idx = (old + direction * step) % MAX_CAMERA_SCAN
-            cap = open_camera(cam_cfg, idx)
-            if cap.isOpened() and cap.read()[0]:
-                state.cap = cap
-                state.cam_index = idx
-                cam_cfg["index"] = idx
-                persist("camera", "index", idx)
-                return
-            cap.release()
-        state.cap = open_camera(cam_cfg, old)   # only this one works
+        set_opencv_log_level("LOG_LEVEL_SILENT")   # probing is noisy
+        try:
+            for step in range(1, MAX_CAMERA_SCAN):
+                idx = (old + direction * step) % MAX_CAMERA_SCAN
+                cap = open_camera(cam_cfg, idx)
+                if cap.isOpened() and cap.read()[0]:
+                    state.cap = cap
+                    state.cam_index = idx
+                    cam_cfg["index"] = idx
+                    persist("camera", "index", idx)
+                    return
+                cap.release()
+            state.cap = open_camera(cam_cfg, old)   # only this one works
+        finally:
+            set_opencv_log_level("LOG_LEVEL_ERROR")
 
     def key_value() -> str:
         raw = out_cfg.get("key", "Left_Alt")
@@ -253,6 +267,7 @@ def build_menu(cfg: dict, state: SimpleNamespace) -> menu.SettingsMenu:
 
 
 def main() -> int:
+    set_opencv_log_level("LOG_LEVEL_ERROR")
     cfg = config.load()
     index = int(sys.argv[1]) if len(sys.argv) > 1 else cfg["camera"]["index"]
     det_cfg = cfg["detection"]

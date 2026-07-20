@@ -20,7 +20,18 @@ import cv2
 BACKEND = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_ANY
 
 
+def _quiet_opencv() -> None:
+    """Probing camera indices that don't exist is harmless but extremely
+    noisy on Linux (V4L2/FFmpeg print warnings per missing device)."""
+    try:
+        from cv2.utils import logging as cvlog
+        cvlog.setLogLevel(cvlog.LOG_LEVEL_SILENT)
+    except Exception:
+        pass
+
+
 def scan() -> int:
+    _quiet_opencv()
     found = []
     for index in range(8):
         cap = cv2.VideoCapture(index, BACKEND)
