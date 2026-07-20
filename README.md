@@ -15,7 +15,7 @@ The app opens a viewer window where you will see yourself depicted as a green st
 **Easiest way (no install):** download the zip from the Releases page,
 unzip it anywhere, and run `CrouchDetection.exe`.
 
-**From source** (needs Python 3.9–3.12):
+**From source** (needs Python 3.9 or newer):
 
 ```powershell
 cd Crouch-Detection

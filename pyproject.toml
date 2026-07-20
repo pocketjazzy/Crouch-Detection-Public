@@ -2,10 +2,11 @@
 name = "crouch-detection"
 version = "1.0.0"
 description = "Webcam crouch detection -> keyboard input. Play Time Crisis (MAME) by physically crouching."
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9"
 dependencies = [
     "opencv-python>=4.9",
-    "mediapipe>=0.10.14",
+    # 0.10.35+ ships py3-none wheels on all platforms - any Python 3 works
+    "mediapipe>=0.10.35",
     "numpy",
     "tomli>=2; python_version < '3.11'",
 ]
