@@ -3,7 +3,7 @@
 Play Time Crisis 2 (or any other game) by physically crouching.
 
 The app uses any generic usb webcam to perform body tracking. While you are standing, it holds a
-key down (Left Alt by default). When you crouch, it lets go of the key. This behvior can be reversed so that it holds on crouch instead, if desired.
+key down (Left Alt by default). When you crouch, it lets go of the key. This behavior can be reversed so that it holds on crouch instead, if desired.
 
 In Time Crisis 2 MAME, Left Alt is the default key for pressing the foot pedal — so standing up in real life makes
 your character stand up, and crouching makes your character duck behind cover.
