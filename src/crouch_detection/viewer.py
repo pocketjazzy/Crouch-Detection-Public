@@ -231,7 +231,7 @@ def build_menu(cfg: dict, state: SimpleNamespace) -> menu.SettingsMenu:
         return LEGACY_KEY_NAMES.get(raw, raw)
 
     def key_change(direction) -> None:
-        state.output.release()
+        state.output.close()
         out_cfg["key"] = _cycle(OUTPUT_KEY_CHOICES, key_value(), direction)
         state.output = keyout.Output(out_cfg["key"])
         persist("output", "key", out_cfg["key"])
@@ -303,6 +303,16 @@ def main() -> int:
     settings = build_menu(cfg, state)
     arm_name = out_cfg.get("arm_hotkey", "f8").upper()
     arm_hotkey = keyout.GlobalHotkey(keyout.hotkey_vk(arm_name))
+    # In-window fallback (X11 keysym: F1..F12 = 65470..65481) for when the
+    # global backend can't read keyboards (Linux without input-group access).
+    arm_fallback = (65469 + int(arm_name[1:])
+                    if arm_name[1:].isdigit() and 1 <= int(arm_name[1:]) <= 12
+                    else 65477)
+
+    def toggle_armed() -> None:
+        state.armed = not state.armed
+        if not state.armed:
+            state.output.release()
     tracker = pose.PoseTracker()
     detector = logic.CrouchDetector(det_cfg)
     calibrator = calibrate.Calibrator()
@@ -349,9 +359,7 @@ def main() -> int:
         # Key output: hold while in the configured state, armed, and not
         # mid-calibration/menu. Everything else releases (fail-safe).
         if arm_hotkey.poll():
-            state.armed = not state.armed
-            if not state.armed:
-                state.output.release()
+            toggle_armed()
         target = (logic.State.STANDING
                   if out_cfg.get("press_when", "standing") == "standing"
                   else logic.State.CROUCHED)
@@ -432,8 +440,10 @@ def main() -> int:
             calibrator.start(now)
         elif key == ord("c"):
             state.show_camera = not state.show_camera
+        elif key == arm_fallback and not arm_hotkey.available:
+            toggle_armed()
 
-    state.output.release()
+    state.output.close()
     tracker.close()
     state.cap.release()
     cv2.destroyAllWindows()

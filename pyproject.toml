@@ -9,6 +9,7 @@ dependencies = [
     "mediapipe>=0.10.35",
     "numpy",
     "tomli>=2; python_version < '3.11'",
+    "evdev>=1.6; sys_platform == 'linux'",
 ]
 
 [project.scripts]

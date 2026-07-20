@@ -56,7 +56,10 @@ def measure_exposure(index: int, n=60):
             print("  camera busy/unavailable")
             return
         cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)   # manual mode
-        cap.set(cv2.CAP_PROP_EXPOSURE, exp)
+        # exp is log2 seconds (DirectShow-native); V4L2 wants 100us units.
+        cap.set(cv2.CAP_PROP_EXPOSURE,
+                exp if sys.platform == "win32"
+                else max(1, round((2.0 ** exp) * 10000)))
         for _ in range(WARMUP_FRAMES):
             cap.read()
         brightness = []

@@ -72,6 +72,30 @@ automatically.
 - **Mirror preview** — flips the picture so it behaves like a mirror.
 - **Show camera feed** — same as pressing `c`.
 
+## Linux / Steam Deck
+
+Works from source with the same steps as above (on the Steam Deck, use
+desktop mode). Extra notes:
+
+- Key pressing works through a virtual keyboard that looks like real
+  hardware, so **no special MAME options are needed on Linux**.
+- On the Steam Deck this usually works out of the box. On other Linux
+  systems, if the app prints a warning that it cannot create the
+  virtual input device, run:
+
+  ```bash
+  sudo usermod -aG input $USER
+  echo 'KERNEL=="uinput", MODE="0660", GROUP="input"' | sudo tee /etc/udev/rules.d/99-crouch-detection.rules
+  sudo udevadm control --reload
+  ```
+
+  then log out and back in. (On the Steam Deck, set a password first
+  with `passwd` if you never have - sudo needs one.)
+- If the app prints a note that the global hotkey is unavailable, `F8`
+  still works whenever the viewer window is focused; the same setup
+  above enables it globally.
+- Portable build: `bash build_exe.sh` (result in `dist/CrouchDetection/`).
+
 ## Good to know
 
 - If the app loses sight of you, it releases the key. In Time Crisis
