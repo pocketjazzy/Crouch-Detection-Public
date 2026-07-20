@@ -14,8 +14,9 @@ fps = 30
 # which halves the frame rate (~16 fps measured on the iC800 lights-off vs
 # 30 lit; A/B-verified 2026-07-18). Toggle live in the settings menu (M).
 auto_exposure = true
-# Shutter used when auto_exposure = false, log2 seconds: -5 = 1/32 s
-# (holds 30 fps, probe-verified), -6 = 1/64 s (darker, more margin).
+# Shutter used when auto_exposure = false, in log2 seconds on every
+# platform: -5 = 1/32 s (holds 30 fps, probe-verified), -6 = 1/64 s
+# (darker, more margin). Converted internally for Linux/V4L2.
 # Find your value with: python -m crouch_detection.fps_probe
 exposure = -5
 

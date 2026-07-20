@@ -59,11 +59,17 @@ def set_opencv_log_level(name: str) -> None:
 def apply_exposure(cap, cam_cfg: dict) -> None:
     if cam_cfg.get("auto_exposure", True):
         cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
+        return
+    # Cap the shutter so auto-exposure can't drop the frame rate in dim
+    # rooms. Config stores log2 seconds (-5 ~= 1/32 s) on every platform;
+    # DirectShow takes that directly, V4L2 wants units of 100 us (a raw
+    # -5 on Linux gets clamped to an extreme exposure = seconds per frame).
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
+    exp = cam_cfg.get("exposure", -5)
+    if sys.platform == "win32":
+        cap.set(cv2.CAP_PROP_EXPOSURE, exp)
     else:
-        # Cap the shutter so auto-exposure can't drop the frame rate in
-        # dim rooms (log2 seconds on DirectShow: -5 ~= 1/32 s).
-        cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
-        cap.set(cv2.CAP_PROP_EXPOSURE, cam_cfg.get("exposure", -5))
+        cap.set(cv2.CAP_PROP_EXPOSURE, max(1, round((2.0 ** exp) * 10000)))
 
 
 def open_camera(cam_cfg: dict, index: int) -> cv2.VideoCapture:
