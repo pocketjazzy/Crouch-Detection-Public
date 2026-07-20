@@ -5,10 +5,11 @@ DirectInput-era apps like MAME see the press exactly like a real key
 (MAME still needs -keyboardprovider dinput). Mouse buttons go out as
 mouse events.
 
-Linux: a virtual input device created through uinput (python-evdev).
-Kernel-level events are indistinguishable from real hardware, so games
-and MAME need no special flags. Needs access to /dev/uinput - usually
-automatic on the Steam Deck; see the README's Linux section otherwise.
+Linux: a virtual input device created through /dev/uinput, implemented
+with the standard library only (SteamOS has no compiler for C-extension
+packages). Kernel-level events are indistinguishable from real hardware,
+so games and MAME need no special flags. Needs access to /dev/uinput -
+see the README's Linux section if permission is denied.
 """
 
 import sys
@@ -122,60 +123,83 @@ if sys.platform == "win32":
         return 0x77
 
 elif sys.platform.startswith("linux"):
+    # Pure-stdlib uinput/evdev: SteamOS has no compiler, so packages with
+    # C extensions (python-evdev) can't install there. The kernel protocol
+    # is just device files + a few ioctls; os/struct/fcntl cover it.
+    import fcntl
+    import glob
     import os
+    import struct
 
-    try:
-        import evdev
-        from evdev import ecodes as _ec
-        _HAVE_EVDEV = True
-    except ImportError:
-        _HAVE_EVDEV = False
+    EV_SYN, EV_KEY = 0x00, 0x01
+    SYN_REPORT = 0
+    UI_SET_EVBIT = 0x40045564
+    UI_SET_KEYBIT = 0x40045565
+    UI_DEV_SETUP = 0x405C5503
+    UI_DEV_CREATE = 0x5501
+    UI_DEV_DESTROY = 0x5502
+    BUS_USB = 0x03
 
-    def _key_code(name: str):
-        if not _HAVE_EVDEV:
-            return None
-        return {
-            "Left_Alt": _ec.KEY_LEFTALT,
-            "Left_Ctrl": _ec.KEY_LEFTCTRL,
-            "Left_Shift": _ec.KEY_LEFTSHIFT,
-            "Space": _ec.KEY_SPACE,
-            "Z": _ec.KEY_Z,
-            "X": _ec.KEY_X,
-            "Mouse_Left": _ec.BTN_LEFT,
-            "Mouse_Right": _ec.BTN_RIGHT,
-            "Mouse_Middle": _ec.BTN_MIDDLE,
-        }.get(name)
+    # Linux input-event-codes.h values.
+    KEY_CODES = {
+        "Left_Alt": 56, "Left_Ctrl": 29, "Left_Shift": 42, "Space": 57,
+        "Z": 44, "X": 45,
+        "Mouse_Left": 272, "Mouse_Right": 273, "Mouse_Middle": 274,
+    }
+    _F_KEY_CODES = {1: 59, 2: 60, 3: 61, 4: 62, 5: 63, 6: 64, 7: 65,
+                    8: 66, 9: 67, 10: 68, 11: 87, 12: 88}
+
+    # struct input_event: struct timeval (2 native longs) + u16 type +
+    # u16 code + s32 value. Native 'l' matches the kernel's long size.
+    _EVENT_FMT = "llHHi"
+    _EVENT_SIZE = struct.calcsize(_EVENT_FMT)
 
     class Output:
-        """Holds/releases one named control via a uinput virtual device."""
+        """Holds/releases one named control via a uinput virtual device.
+        Kernel-level events look exactly like real hardware."""
 
         def __init__(self, name: str) -> None:
             self.name = name
             self.down = False
-            self._code = _key_code(name)
-            self._ui = None
+            self._code = KEY_CODES.get(name)
+            self._fd = None
             self.supported = False
-            if not _HAVE_EVDEV:
-                print("WARNING: python-evdev not installed - key output "
-                      "disabled (pip install -e . again to pick it up)")
-            elif self._code is None:
+            if self._code is None:
                 print(f"WARNING: output '{name}' not recognized - "
                       f"key output disabled")
-            else:
-                try:
-                    self._ui = evdev.UInput({_ec.EV_KEY: [self._code]},
-                                            name="Crouch-Detection")
-                    self.supported = True
-                except Exception as exc:
-                    print(f"WARNING: cannot create the virtual input device "
-                          f"({exc}) - key output disabled. See the README's "
-                          f"Linux section (uinput access).")
+                return
+            try:
+                fd = os.open("/dev/uinput", os.O_WRONLY | os.O_NONBLOCK)
+            except OSError as exc:
+                print(f"WARNING: cannot open /dev/uinput ({exc}) - key "
+                      f"output disabled. See the README's Linux section.")
+                return
+            try:
+                fcntl.ioctl(fd, UI_SET_EVBIT, EV_KEY)
+                fcntl.ioctl(fd, UI_SET_KEYBIT, self._code)
+                # struct uinput_setup: input_id (4x u16), name[80], u32.
+                fcntl.ioctl(fd, UI_DEV_SETUP, struct.pack(
+                    "=HHHH80sI", BUS_USB, 0x0001, 0x0001, 1,
+                    b"Crouch-Detection", 0))
+                fcntl.ioctl(fd, UI_DEV_CREATE)
+            except OSError as exc:
+                os.close(fd)
+                print(f"WARNING: cannot create the virtual input device "
+                      f"({exc}) - key output disabled. See the README's "
+                      f"Linux section.")
+                return
+            self._fd = fd
+            self.supported = True
+
+        def _emit(self, etype: int, code: int, value: int) -> None:
+            os.write(self._fd,
+                     struct.pack(_EVENT_FMT, 0, 0, etype, code, value))
 
         def set(self, down: bool) -> None:
             if not self.supported or down == self.down:
                 return
-            self._ui.write(_ec.EV_KEY, self._code, 1 if down else 0)
-            self._ui.syn()
+            self._emit(EV_KEY, self._code, 1 if down else 0)
+            self._emit(EV_SYN, SYN_REPORT, 0)
             self.down = down
 
         def release(self) -> None:
@@ -183,63 +207,66 @@ elif sys.platform.startswith("linux"):
 
         def close(self) -> None:
             self.release()
-            if self._ui is not None:
-                self._ui.close()
-                self._ui = None
+            if self._fd is not None:
+                try:
+                    fcntl.ioctl(self._fd, UI_DEV_DESTROY)
+                except OSError:
+                    pass
+                os.close(self._fd)
+                self._fd = None
                 self.supported = False
 
     class GlobalHotkey:
-        """Watches real keyboards via evdev (needs /dev/input read access,
-        i.e. membership in the 'input' group). When unavailable, the viewer
-        falls back to handling the hotkey while its window is focused."""
+        """Watches /dev/input/event* for the hotkey (needs read access,
+        i.e. membership in the 'input' group). When unavailable, the
+        viewer falls back to the hotkey working while its window is
+        focused."""
 
         def __init__(self, vk: int) -> None:
             self._vk = vk
-            self._devices = []
-            if _HAVE_EVDEV:
-                for path in evdev.list_devices():
-                    try:
-                        dev = evdev.InputDevice(path)
-                        if vk in (dev.capabilities().get(_ec.EV_KEY) or []):
-                            os.set_blocking(dev.fd, False)
-                            self._devices.append(dev)
-                        else:
-                            dev.close()
-                    except OSError:
-                        continue
-            self.available = bool(self._devices)
+            self._fds = []
+            for path in sorted(glob.glob("/dev/input/event*")):
+                try:
+                    self._fds.append(
+                        os.open(path, os.O_RDONLY | os.O_NONBLOCK))
+                except OSError:
+                    continue
+            self.available = bool(self._fds)
             if not self.available:
                 print("NOTE: global arm hotkey unavailable (no readable "
-                      "keyboards - see the README's Linux section). The "
-                      "hotkey still works while the viewer window is "
+                      "input devices - see the README's Linux section). "
+                      "The hotkey still works while the viewer window is "
                       "focused.")
 
         def poll(self) -> bool:
             fired = False
-            for dev in self._devices:
-                try:
-                    while True:
-                        event = dev.read_one()
-                        if event is None:
-                            break
-                        if (event.type == _ec.EV_KEY
-                                and event.code == self._vk
-                                and event.value == 1):
+            for fd in self._fds:
+                while True:
+                    try:
+                        data = os.read(fd, _EVENT_SIZE * 64)
+                    except (BlockingIOError, InterruptedError):
+                        break
+                    except OSError:
+                        break
+                    if not data:
+                        break
+                    for off in range(0, len(data) - _EVENT_SIZE + 1,
+                                     _EVENT_SIZE):
+                        _s, _u, etype, code, value = struct.unpack_from(
+                            _EVENT_FMT, data, off)
+                        if (etype == EV_KEY and code == self._vk
+                                and value == 1):
                             fired = True
-                except OSError:
-                    continue
             return fired
 
     def hotkey_vk(name: str) -> int:
-        """'f1'..'f12' -> evdev key code; unrecognized falls back to F8."""
+        """'f1'..'f12' -> Linux key code; unrecognized falls back to F8."""
         name = name.lower().strip()
-        if _HAVE_EVDEV:
-            if name.startswith("f") and name[1:].isdigit():
-                n = int(name[1:])
-                if 1 <= n <= 12:
-                    return getattr(_ec, f"KEY_F{n}")
-            return _ec.KEY_F8
-        return 0
+        if name.startswith("f") and name[1:].isdigit():
+            code = _F_KEY_CODES.get(int(name[1:]))
+            if code is not None:
+                return code
+        return _F_KEY_CODES[8]
 
 else:
     class Output:
