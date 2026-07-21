@@ -63,16 +63,18 @@ optional future work.
   exposure off (if dim room), `n` → calibrate. The runnable app is in
   `dist\`, NOT `build\` (PyInstaller scratch).
 
-- [ ] **M6 — Linux / Steam Deck** *(in progress 2026-07-20)*
-  DONE: runs from source on SteamOS (Python 3.13 + mediapipe 0.10.35
-  py3-none wheels); detection + calibration validated on the Deck; three
-  Linux quirks fixed (OpenCV probe noise, V4L2 exposure units = 100 µs,
-  UVC frame-interval renegotiation via stream reopen on exposure toggle);
-  evdev/uinput key output + evdev global hotkey implemented with
-  in-window F8 fallback; `build_exe.sh`. REMAINING: validate key output
-  + hotkey on the Deck, MAME-on-Deck test (no provider flags needed —
-  uinput looks like real hardware), packaging decision for distribution
-  (PyInstaller tar / GitHub Actions builds).
+- [x] **M6 — Linux / Steam Deck** *(VALIDATED in TC2/MAME on the Deck
+  2026-07-20)*
+  Runs from source on SteamOS (Python 3.13 + mediapipe 0.10.35 py3-none
+  wheels); detection, calibration, key output, and gameplay validated on
+  the Deck — **no MAME provider flags needed** (pure-stdlib uinput looks
+  like real hardware; python-evdev dropped: SteamOS has no compiler).
+  Linux quirks fixed along the way: OpenCV probe noise, V4L2 exposure
+  units (100 µs), UVC frame-interval renegotiation (stream reopen on
+  exposure toggle). Deck MAME note: EmuDeck per-game/system INIs can
+  override rompath at load time while -verifyroms passes — launch with
+  explicit `-rompath` if timecrs2 reports files NOT FOUND.
+  REMAINING (optional): GitHub Actions release builds.
 
 ## Parking lot
 

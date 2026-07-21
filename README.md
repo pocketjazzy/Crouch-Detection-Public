@@ -98,6 +98,8 @@ desktop mode). Extra notes:
 
 ## Good to know
 
+- Keep the game window focused (clicked on). Like a real keyboard, the
+  key press goes to whichever window is active.
 - If the app loses sight of you, it releases the key. In Time Crisis
   that means your character ducks to safety.
 - Any ordinary USB webcam works. Plug it into the computer directly,

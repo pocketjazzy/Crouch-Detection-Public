@@ -1,6 +1,6 @@
 [project]
 name = "crouch-detection"
-version = "1.0.0"
+version = "2.0.0"
 description = "Webcam crouch detection -> keyboard input. Play Time Crisis (MAME) by physically crouching."
 requires-python = ">=3.9"
 dependencies = [
