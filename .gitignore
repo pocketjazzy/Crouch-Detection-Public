@@ -6,6 +6,10 @@ build/
 dist/
 *.spec
 
+# Release artifacts staged locally
+*.tar.gz
+*.zip
+
 # Virtual environments
 .venv/
 venv/
