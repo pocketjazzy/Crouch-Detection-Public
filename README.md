@@ -2,6 +2,9 @@
 
 Play Time Crisis 2 (or any other game) by physically crouching.
 
+<img width="432" height="323" alt="image" src="https://github.com/user-attachments/assets/97329dab-fd7f-45b2-a599-f742d00b98c9" />
+
+
 The app uses any generic usb webcam to perform body tracking. While you are standing, it holds a
 key down (Left Alt by default). When you crouch, it lets go of the key. This behavior can be reversed so that it holds on crouch instead, if desired.
 
